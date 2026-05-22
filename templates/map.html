@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RaktSetu — Blood Banks in Bangalore</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(135deg, #fff5f5 0%, #ffe8e8 40%, #ffd6cc 100%);
+        }
+
+        /* ── Top bar ── */
+        .topbar {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 24px;
+            background: rgba(255, 255, 255, 0.82);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-bottom: 1px solid rgba(220, 100, 80, 0.12);
+            box-shadow: 0 2px 12px rgba(200, 60, 60, 0.07);
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+            background: none;
+            border: 1px solid rgba(192, 112, 96, 0.3);
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 12.5px;
+            color: #b07060;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .back-btn:hover {
+            background: rgba(192, 112, 96, 0.1);
+            color: #8a4030;
+        }
+
+        .back-btn svg { width: 13px; height: 13px; }
+
+        .topbar-title {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+        }
+
+        .topbar-title h1 {
+            font-size: 17px;
+            font-weight: 700;
+            color: #c0392b;
+            letter-spacing: -0.2px;
+        }
+
+        .topbar-title p {
+            font-size: 12px;
+            color: #b07070;
+            font-style: italic;
+        }
+
+        .badge {
+            margin-left: auto;
+            background: rgba(192, 57, 43, 0.08);
+            border: 1px solid rgba(192, 57, 43, 0.2);
+            border-radius: 999px;
+            padding: 3px 12px;
+            font-size: 11.5px;
+            color: #9a3020;
+            font-weight: 500;
+        }
+
+        /* ── Map ── */
+        #map {
+            flex: 1;
+        }
+
+        /* ── Custom popup ── */
+        .leaflet-popup-content-wrapper {
+            border-radius: 14px !important;
+            box-shadow: 0 6px 24px rgba(192, 57, 43, 0.18) !important;
+            border: 1px solid rgba(192, 57, 43, 0.15) !important;
+            padding: 0 !important;
+            overflow: hidden;
+        }
+
+        .leaflet-popup-content {
+            margin: 0 !important;
+            width: 220px !important;
+        }
+
+        .leaflet-popup-tip {
+            background: white !important;
+        }
+
+        .popup-inner {
+            padding: 14px 16px;
+        }
+
+        .popup-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #2d1a1a;
+            line-height: 1.4;
+            margin-bottom: 8px;
+        }
+
+        .popup-phone {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #b07060;
+        }
+
+        .popup-phone svg { width: 12px; height: 12px; flex-shrink: 0; }
+
+        .popup-call {
+            display: block;
+            margin-top: 10px;
+            text-align: center;
+            background: #c0392b;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            padding: 7px;
+            font-size: 12px;
+            font-weight: 600;
+            transition: background 0.15s;
+        }
+
+        .popup-call:hover { background: #a93226; }
+    </style>
+</head>
+<body>
+
+    <!-- Top bar -->
+    <div class="topbar">
+        <a href="/" class="back-btn">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15 18l-6-6 6-6" stroke="#b07060" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Back
+        </a>
+        <div class="topbar-title">
+            <span style="font-size:20px">🩸</span>
+            <div>
+                <h1>RaktSetu</h1>
+                <p>Blood Banks in Bangalore</p>
+            </div>
+        </div>
+        <span class="badge">15 blood banks</span>
+    </div>
+
+    <!-- Map -->
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // Custom coral/red drop icon
+        function makeIcon(size) {
+            const s = size || 32;
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 32" width="${s}" height="${Math.round(s*1.33)}">
+                <filter id="shadow">
+                    <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="rgba(192,57,43,0.4)"/>
+                </filter>
+                <g filter="url(#shadow)">
+                    <path d="M12 2C12 2 3 12 3 18a9 9 0 0 0 18 0C21 12 12 2 12 2Z" fill="#c0392b"/>
+                    <circle cx="12" cy="18" r="3.5" fill="rgba(255,255,255,0.35)"/>
+                </g>
+            </svg>`;
+            return L.divIcon({
+                html: svg,
+                className: '',
+                iconSize: [s, Math.round(s * 1.33)],
+                iconAnchor: [s / 2, Math.round(s * 1.33)],
+                popupAnchor: [0, -Math.round(s * 1.1)]
+            });
+        }
+
+        const map = L.map('map').setView([12.9716, 77.5946], 12);
+
+        // Soft warm tile layer (CartoDB Positron)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+            subdomains: 'abcd',
+            maxZoom: 19
+        }).addTo(map);
+
+        const bloodBanks = [
+            { name: "Indian Red Cross Society Blood Bank",        lat: 12.9850, lng: 77.5920, phone: "080-22266435" },
+            { name: "Lions Blood Bank",                           lat: 12.9920, lng: 77.5870, phone: "080-22266807" },
+            { name: "Rotary TTK Blood Bank",                      lat: 12.9610, lng: 77.6490, phone: "080-25293486" },
+            { name: "Victoria Hospital Blood Bank",               lat: 12.9580, lng: 77.5730, phone: "080-26701150" },
+            { name: "Vanivilas Hospital Blood Bank",              lat: 12.9590, lng: 77.5720, phone: "080-26705206" },
+            { name: "NIMHANS Blood Bank",                         lat: 12.9430, lng: 77.5960, phone: "080-26995000" },
+            { name: "M S Ramaiah Hospital Blood Bank",            lat: 13.0310, lng: 77.5650, phone: "080-23606545" },
+            { name: "Narayana Hrudayalaya Blood Bank",            lat: 12.8440, lng: 77.6830, phone: "080-27835000" },
+            { name: "Bangalore Baptist Hospital Blood Bank",      lat: 13.0280, lng: 77.5910, phone: "080-23330322" },
+            { name: "Bhagwan Mahaveer Jain Hospital Blood Bank",  lat: 12.9910, lng: 77.5880, phone: "080-22207640" },
+            { name: "Jayadeva Institute of Cardiology Blood Bank",lat: 12.9180, lng: 77.5990, phone: "080-26534600" },
+            { name: "Sagar Apollo Hospital Blood Bank",           lat: 12.9400, lng: 77.5720, phone: "080-26536700" },
+            { name: "HOSMAT Blood Bank",                          lat: 12.9690, lng: 77.6070, phone: "080-25543746" },
+            { name: "Rajarajeswari Hospital Blood Bank",          lat: 12.9130, lng: 77.5190, phone: "080-28437888" },
+            { name: "Rashtrothana Blood Bank",                    lat: 12.9560, lng: 77.5680, phone: "080-26612730" }
+        ];
+
+        const icon = makeIcon(34);
+
+        bloodBanks.forEach(bb => {
+            const popup = `
+                <div class="popup-inner">
+                    <div class="popup-name">${bb.name}</div>
+                    <div class="popup-phone">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M6.6 10.8a15.4 15.4 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.24 11.4 11.4 0 0 0 3.58.58 1 1 0 0 1 1 1V17a1 1 0 0 1-1 1A17 17 0 0 1 3 6a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.26.2 2.48.58 3.6a1 1 0 0 1-.25 1L6.6 10.8Z" fill="#b07060"/>
+                        </svg>
+                        ${bb.phone}
+                    </div>
+                    <a class="popup-call" href="tel:${bb.phone.replace(/-/g,'')}">Call Now</a>
+                </div>`;
+            L.marker([bb.lat, bb.lng], { icon })
+                .addTo(map)
+                .bindPopup(popup, { maxWidth: 240 });
+        });
+    </script>
+</body>
+</html>
